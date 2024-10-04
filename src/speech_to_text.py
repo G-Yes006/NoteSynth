@@ -1,6 +1,7 @@
 import speech_recognition as sr
 from pydub import AudioSegment
 import time
+import re
 
 def audio_to_text(audio_file):
     """
@@ -41,10 +42,74 @@ def audio_to_text(audio_file):
             time.sleep(1)  # Update every second
             
         print("Recognition complete.")
-        return text.splitlines()  # Return notes as a list of lines
+        
+        # Process the text and add icons
+        sentences = break_into_sentences(text)
+        return add_icons_to_notes(sentences)  # Return notes with icons
+
     except sr.UnknownValueError:
         return ["Could not understand audio"]
     except sr.RequestError as e:
         return [f"Could not request results from speech recognition service; {e}"]
     except Exception as e:
         return [f"An error occurred during recognition: {str(e)}"]
+
+def break_into_sentences(text):
+    """
+    Breaks a block of text into sentences for easier processing.
+    
+    Parameters:
+    - text: str, the transcribed text to break into sentences.
+    
+    Returns:
+    - list of str: The text split into individual sentences.
+    """
+    # Use regex to split text into sentences.
+    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', text)
+    return [sentence.strip() for sentence in sentences if sentence]
+
+def add_icons_to_notes(sentences):
+    """
+    Adds relevant icons (emojis) to each sentence based on its content.
+    
+    Parameters:
+    - sentences: list of str, the transcribed text as a list of sentences.
+
+    Returns:
+    - list of str: Sentences with added icons.
+    """
+    icons = {
+        "reminder": "🔔",  # Reminder related
+        "idea": "💡",      # New ideas
+        "action": "✅",    # Action items
+        "warning": "⚠️",  # Warnings or cautions
+        "question": "❓",  # Questions or doubts
+        "information": "ℹ️",  # General info
+        "important": "⭐", # Important points
+    }
+
+    enhanced_notes = []
+    for sentence in sentences:
+        # Match keywords to assign relevant icons
+        if any(keyword in sentence.lower() for keyword in ["remind", "remember"]):
+            icon = icons["reminder"]
+        elif any(keyword in sentence.lower() for keyword in ["idea", "thought"]):
+            icon = icons["idea"]
+        elif any(keyword in sentence.lower() for keyword in ["action", "complete", "done"]):
+            icon = icons["action"]
+        elif any(keyword in sentence.lower() for keyword in ["warning", "caution"]):
+            icon = icons["warning"]
+        elif any(keyword in sentence.lower() for keyword in ["what", "how", "why"]):
+            icon = icons["question"]
+        elif any(keyword in sentence.lower() for keyword in ["info", "information", "details"]):
+            icon = icons["information"]
+        elif any(keyword in sentence.lower() for keyword in ["important", "priority"]):
+            icon = icons["important"]
+        else:
+            # Default or random icon
+            icon = random.choice(list(icons.values()))
+        
+        # Add the icon and format as a bullet point
+        enhanced_notes.append(f"{icon} {sentence}")
+
+    return enhanced_notes
